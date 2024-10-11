@@ -3,6 +3,7 @@ const { createServer } = require("node:http");
 const { join } = require("node:path");
 const { Server } = require("socket.io");
 const socketHandler = require("./api/socket");
+const gameHandler = require('./api/game');
 const cors = require('cors');
 const fs = require("fs");
 
@@ -24,6 +25,7 @@ const io = new Server(4001, {
 });
 
 socketHandler(io);
+gameHandler(io);
 
 app.use(express.static("./public"));
 

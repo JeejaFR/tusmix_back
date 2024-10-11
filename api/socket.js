@@ -43,8 +43,8 @@ module.exports = (io) => {
                 for (const socketId of room) {
                     const socketToLeave = io.sockets.sockets.get(socketId);
                     if (socketToLeave) {
-                        io.emit('kickPlayer');
-                        socketToLeave.leave(roomCode);
+                      io.to(roomCode).emit('kickPlayer');
+                      socketToLeave.leave(roomCode);
                     }
                 }
                 const playersInRoom = Array.from(io.sockets.adapter.rooms.get(roomCode) || []);
