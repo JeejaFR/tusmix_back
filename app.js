@@ -1,41 +1,3 @@
-// const express = require("express");
-// const { createServer } = require("node:http");
-// const { join } = require("node:path");
-// const { Server } = require("socket.io");
-
-// const app = express();
-// const server = createServer(app);
-// const io = new Server(server);
-
-// app.use(express.static("./public"));
-
-// app.get("/", (req, res) => {
-//   res.sendFile(join(__dirname, "index.html"));
-// });
-
-// const secretWord = "tusmo";
-
-// io.on("connection", (socket) => {
-//   console.log("Un joueur s'est connecté");
-
-//   socket.on("guess", (data) => {
-//     const guessedWord = data.word.toLowerCase();
-//     if (guessedWord === secretWord) {
-//       io.emit("guessResult", { result: "Correct ! Vous avez trouvé le mot." });
-//     } else {
-//       io.emit("guessResult", { result: "Faux ! Essayez encore." });
-//     }
-//   });
-
-//   socket.on("disconnect", () => {
-//     console.log("Un joueur s'est déconnecté");
-//   });
-// });
-
-// server.listen(4000, () => {
-//   console.log("server running at http://localhost:4000");
-// });
-
 const express = require("express");
 const { createServer } = require("node:http");
 const { join } = require("node:path");
@@ -46,19 +8,16 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-// Charger le dictionnaire de mots français
 const words = fs
   .readFileSync("dictionnaire.txt", "utf-8")
   .split("\n")
   .map((word) => word.trim());
 
-// Fonction pour choisir un mot aléatoire dans le dictionnaire
 function getRandomWord() {
   const randomIndex = Math.floor(Math.random() * words.length);
   return words[randomIndex];
 }
 
-// Démarrer avec un mot secret aléatoire
 let secretWord = getRandomWord();
 console.log("Mot secret choisi:", secretWord);
 
@@ -68,16 +27,22 @@ app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
 
+const players = {};
+
 io.on("connection", (socket) => {
   console.log("Un joueur s'est connecté");
 
-  // Envoyer la longueur du mot au joueur lors de la connexion
+  players[socket.id] = {
+    attempts: 0,
+    correctLetters: Array(secretWord.length).fill("_"),
+  };
+
   socket.emit("wordLength", { length: secretWord.length });
 
   socket.on("guess", (data) => {
     const guessedWord = data.word.toLowerCase();
+    const player = players[socket.id];
 
-    // Vérifier si le mot deviné existe dans le dictionnaire
     if (!words.includes(guessedWord)) {
       socket.emit("guessResult", {
         result: "Le mot n'existe pas dans le dictionnaire.",
@@ -85,35 +50,45 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Comparer les lettres avec le mot secret et donner un feedback
-    let result = "";
-    let correctLetters = [];
+    if (player.attempts >= 6) {
+      socket.emit("guessResult", {
+        result: "Vous avez déjà atteint le nombre maximum d'essais.",
+      });
+      return;
+    }
+
+    player.attempts++;
 
     for (let i = 0; i < guessedWord.length; i++) {
       if (guessedWord[i] === secretWord[i]) {
-        correctLetters[i] = guessedWord[i]; // Lettre bien placée
+        player.correctLetters[i] = guessedWord[i];
       } else if (secretWord.includes(guessedWord[i])) {
-        correctLetters[i] = guessedWord[i]; // Lettre présente mais mal placée
-      } else {
-        correctLetters[i] = "_"; // Lettre incorrecte
+        if (player.correctLetters[i] === "_") {
+          player.correctLetters[i] = guessedWord[i];
+        }
       }
     }
 
-    // Si le mot est correct
     if (guessedWord === secretWord) {
-      result = "Correct ! Vous avez trouvé le mot.";
-      // Choisir un nouveau mot pour la prochaine partie
+      io.emit("guessResult", { result: "Correct ! Vous avez trouvé le mot." });
       secretWord = getRandomWord();
       console.log("Nouveau mot secret choisi:", secretWord);
+      for (const id in players) {
+        players[id].attempts = 0;
+        players[id].correctLetters = Array(secretWord.length).fill("_");
+      }
     } else {
-      result = `Faux ! Lettres trouvées : ${correctLetters.join(" ")}`;
+      socket.emit("guessResult", {
+        result: `Faux ! Lettres trouvées : ${player.correctLetters.join(
+          " "
+        )}, Essais restants : ${6 - player.attempts}`,
+      });
     }
-
-    io.emit("guessResult", { result });
   });
 
   socket.on("disconnect", () => {
     console.log("Un joueur s'est déconnecté");
+    delete players[socket.id];
   });
 });
 

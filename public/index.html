@@ -34,12 +34,7 @@
     <h1>Tusmo Multijoueur</h1>
     <div id="game">
       <div id="wordLengthInfo"></div>
-      <input
-        type="text"
-        id="wordInput"
-        placeholder="Devinez le mot"
-        maxlength="6"
-      />
+      <input type="text" id="wordInput" placeholder="Devinez le mot" />
       <button id="submitGuess">Soumettre</button>
       <div id="result"></div>
     </div>
@@ -48,24 +43,21 @@
     <script>
       const socket = io();
 
-      // Recevoir la longueur du mot au début
       socket.on("wordLength", (data) => {
         document.getElementById(
           "wordLengthInfo"
         ).textContent = `Le mot à deviner contient ${data.length} lettres.`;
       });
 
-      // Gestion du clic pour soumettre un mot
       document.getElementById("submitGuess").addEventListener("click", () => {
         const word = document.getElementById("wordInput").value;
 
         if (word) {
           socket.emit("guess", { word: word });
-          document.getElementById("wordInput").value = ""; // Réinitialiser l'input après envoi
+          document.getElementById("wordInput").value = "";
         }
       });
 
-      // Réception du résultat du serveur
       socket.on("guessResult", (data) => {
         document.getElementById("result").textContent = data.result;
       });
