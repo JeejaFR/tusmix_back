@@ -22,18 +22,20 @@ module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("Un joueur s'est connecté");
 
-    // Envoie la longueur du mot au joueur
     socket.emit("wordLength", { length: secretWord.length });
 
-    socket.on("guess", (roomCode, data) => {
-      const guessedWord = data.word.toLowerCase();
+    socket.emit("wordFirstLetter", { firstLetter: secretWord[0] });
+
+    socket.on("guess", (roomCode, word) => {
+      const guessedWord = word.toLowerCase();
       console.log("guessedWord: "+guessedWord);
+      console.log("roomCode: "+roomCode);
+
       const player = players[socket.id] = {
         attempts: 0,
         correctLetters: Array(secretWord.length).fill("_"),
       };
 
-      // Vérifier si le mot est correct ou non
       if (!words.includes(guessedWord)) {
         socket.emit("guessResult", {
           result: "Le mot n'existe pas dans le dictionnaire.",
@@ -41,7 +43,7 @@ module.exports = (io) => {
         return;
       }
 
-      if (player.attempts >= 6) {
+      if (player.attempts >= 5) {
         socket.emit("guessResult", {
           result: "Vous avez déjà atteint le nombre maximum d'essais.",
         });
@@ -61,9 +63,9 @@ module.exports = (io) => {
       }
 
       if (guessedWord === secretWord) {
-        io.to(roomCode).emit("guessResult", { result: "Correct ! Vous avez trouvé le mot." });
-        // Choisir un nouveau mot et réinitialiser les tentatives
+        socket.emit("guessResult", { result: "Correct ! Vous avez trouvé le mot." });
         secretWord = getRandomWord();
+        console.log("secretWorld: "+secretWord);
         for (const id in players) {
           players[id].attempts = 0;
           players[id].correctLetters = Array(secretWord.length).fill("_");
