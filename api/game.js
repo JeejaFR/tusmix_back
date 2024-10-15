@@ -1,40 +1,40 @@
 const fs = require("fs");
 
-// Charger le dictionnaire de mots depuis un fichier
 const words = fs
   .readFileSync("dictionnaire.txt", "utf-8")
   .split("\n")
-  .map((word) => word.trim());
+  .map((word) => word.trim())
+  .map((word) => removeAccents(word.toUpperCase()));
 
-// Fonction pour obtenir un mot aléatoire
+function removeAccents(word) {
+  return word.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 function getRandomWord() {
   const randomIndex = Math.floor(Math.random() * words.length);
   return words[randomIndex];
 }
 
-// Définir le mot secret initial
 let secretWord = getRandomWord();
-console.log("secretWord: "+secretWord);
+console.log("secretWord: " + secretWord);
 
 const players = {};
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
-    console.log("Un joueur s'est connecté");
-
     socket.emit("wordLength", { length: secretWord.length });
 
     socket.emit("wordFirstLetter", { firstLetter: secretWord[0] });
 
     socket.on("guess", (roomCode, word) => {
-      const guessedWord = word.toLowerCase();
-      console.log("guessedWord: "+guessedWord);
-      console.log("roomCode: "+roomCode);
+      const guessedWord = removeAccents(word.toUpperCase());
+      console.log("guessedWord: " + guessedWord);
+      console.log("roomCode: " + roomCode);
 
-      const player = players[socket.id] = {
+      const player = (players[socket.id] = {
         attempts: 0,
         correctLetters: Array(secretWord.length).fill("_"),
-      };
+      });
 
       if (!words.includes(guessedWord)) {
         socket.emit("guessResult", {
@@ -49,7 +49,7 @@ module.exports = (io) => {
         });
         return;
       }
-  
+
       player.attempts++;
 
       for (let i = 0; i < guessedWord.length; i++) {
@@ -63,22 +63,27 @@ module.exports = (io) => {
       }
 
       if (guessedWord === secretWord) {
-        socket.emit("guessResult", { result: "Correct ! Vous avez trouvé le mot." });
+        socket.emit("guessResult", {
+          result: "Correct ! Vous avez trouvé le mot.",
+        });
+
         secretWord = getRandomWord();
-        console.log("secretWorld: "+secretWord);
+        console.log("Nouveau mot secret: " + secretWord);
+
         for (const id in players) {
           players[id].attempts = 0;
           players[id].correctLetters = Array(secretWord.length).fill("_");
         }
       } else {
         socket.emit("guessResult", {
-          result: `Faux ! Lettres trouvées : ${player.correctLetters.join(" ")}, Essais restants : ${6 - player.attempts}`,
+          result: `Faux ! Lettres trouvées : ${player.correctLetters.join(
+            " "
+          )}, Essais restants : ${6 - player.attempts}`,
         });
       }
     });
 
     socket.on("disconnect", () => {
-      console.log("Un joueur s'est déconnecté");
       delete players[socket.id];
     });
   });
