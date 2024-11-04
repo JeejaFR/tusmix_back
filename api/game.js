@@ -56,9 +56,9 @@ module.exports = (io) => {
         if (guessedWord[i] === secretWord[i]) {
           player.correctLetters[i] = guessedWord[i];
         } else if (secretWord.includes(guessedWord[i])) {
-          if (player.correctLetters[i] === "_") {
-            player.correctLetters[i] = guessedWord[i];
-          }
+          // if (player.correctLetters[i] === "_") {
+          //   player.correctLetters[i] = guessedWord[i];
+          // }
         }
       }
 
