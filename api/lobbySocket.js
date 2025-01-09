@@ -6,7 +6,6 @@ const words = fs
   .split("\n")
   .map((word) => word.trim());
 
-// Fonction pour obtenir un mot aléatoire
 function getRandomWord() {
   const randomIndex = Math.floor(Math.random() * words.length);
   return words[randomIndex];
